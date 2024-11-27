@@ -135,7 +135,7 @@
             dynamicFields.appendChild(etRate);
             dynamicFields.appendChild(etAmount);
 
-            addRealtimeCalculation('weight', 'rate', 'amount');
+            addRealtimeCalculation('weight', 'rate', 'amount', true);
         }
 
         // Rate and Amount input fields
@@ -150,7 +150,7 @@
             dynamicFields.appendChild(etAmount);
             dynamicFields.appendChild(etWeight);
 
-            addRealtimeCalculation('amount', 'rate', 'weight');
+            addRealtimeCalculation('amount', 'rate', 'weight', false);
         }
 
         function createInputField(label, disabled = false) {
@@ -166,7 +166,7 @@
             return div;
         }
 
-        function addRealtimeCalculation(field1, field2, resultField) {
+        function addRealtimeCalculation(field1, field2, resultField, isWeightButton) {
             const input1 = dynamicFields.querySelector(`[data-label="${field1}"]`);
             const input2 = dynamicFields.querySelector(`[data-label="${field2}"]`);
             const resultInput = dynamicFields.querySelector(`[data-label="${resultField}"]`);
@@ -174,10 +174,14 @@
             const calculate = () => {
                 const value1 = parseFloat(input1.value) || 0;
                 const value2 = parseFloat(input2.value) || 0;
-                if (field1 === 'weight' || field1 === 'amount') {
-                    resultInput.value = (value1 * value2).toFixed(2);
+                if (isWeightButton) {
+                    resultInput.value = (value1 * value2).toFixed(2);  // Weight * Rate = Amount
                 } else {
-                    resultInput.value = (value1 / value2).toFixed(2);
+                    if (value2 !== 0) {
+                        resultInput.value = (value1 / value2).toFixed(2);  // Amount / Rate = Weight
+                    } else {
+                        resultInput.value = 'Error';  // Handle division by zero
+                    }
                 }
             };
 

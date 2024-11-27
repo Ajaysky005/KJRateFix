@@ -16,14 +16,6 @@
             margin-top: 20px;
         }
 
-        .highlight-acc {
-            background-color: #85f19e;
-        }
-
-        .highlight-covered {
-            background-color: #f1d06e;
-        }
-
         .checkbox-column {
             text-align: center;
         }
@@ -60,6 +52,14 @@
 
     <div class="container">
         <h2 class="text-center">Orders with Acc and Covered Checked</h2>
+        <div class="d-flex justify-content-end my-3">
+            <select id="daySelector" class="form-select w-auto">
+                <option value="7">7 Days</option>
+                <option value="10">10 Days</option>
+                <option value="15">15 Days</option>
+            </select>
+            <button id="deleteButton" class="btn btn-danger ms-2">Delete</button>
+        </div>
         <div id="accCoveredTable" class="report-table">
             <table class="table table-striped">
                 <thead>
@@ -82,14 +82,14 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
-        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyAFr9vK3MbujpR9KFe_UsKHHCtedsYj26A",
             authDomain: "kjratefixweb.firebaseapp.com",
             databaseURL: "https://kjratefixweb-default-rtdb.firebaseio.com",
             projectId: "kjratefixweb",
-            storageBucket: "kjratefixweb.firebasestorage.app",
+            storageBucket: "kjratefixweb.appspot.com",
             messagingSenderId: "854761320925",
             appId: "1:854761320925:web:1a48cc618d83f7e4b34634"
         };
@@ -98,10 +98,12 @@
         const db = getFirestore(app);
 
         const accCoveredReportBody = document.getElementById('accCoveredReportBody');
+        const daySelector = document.getElementById('daySelector');
+        const deleteButton = document.getElementById('deleteButton');
 
+        // Fetch orders with both Acc and Covered checked
         async function fetchAccCoveredOrders() {
             try {
-                // Fetch all orders with both checkboxes checked (Acc and Covered)
                 const ordersQuery = query(
                     collection(db, "orders"),
                     where("accChecked", "==", true),
@@ -111,7 +113,7 @@
                 const querySnapshot = await getDocs(ordersQuery);
 
                 if (querySnapshot.empty) {
-                    alert("No orders found with both Acc and Covered checked.");
+                    accCoveredReportBody.innerHTML = '<tr><td colspan="7" class="text-center">No orders found with both Acc and Covered checked.</td></tr>';
                     return;
                 }
 
@@ -135,51 +137,94 @@
                     `;
                     accCoveredReportBody.appendChild(row);
 
-                    // Handle checkbox state change for highlighting and Firebase update
-                    const accCheckbox = row.querySelector('.acc-checkbox');
-                    const coveredCheckbox = row.querySelector('.covered-checkbox');
+                    const accCheckbox = row.querySelector(`#acc-${doc.id}`);
+                    const coveredCheckbox = row.querySelector(`#covered-${doc.id}`);
 
-                    accCheckbox.addEventListener('change', function () {
-                        handleCheckboxChange(doc.id, 'accChecked', accCheckbox);
-                        if (accCheckbox.checked) {
-                            row.classList.add('highlight-acc');
-                        } else {
-                            row.classList.remove('highlight-acc');
+                    // Event listeners for checkbox changes
+                    accCheckbox.addEventListener('change', async function () {
+                        if (!accCheckbox.checked) {
+                            const confirmUncheck = confirm("Are you sure you want to uncheck 'Acc'? This will move the order back to the regular orders table.");
+                            if (!confirmUncheck) {
+                                accCheckbox.checked = true; // Revert to checked state
+                                return;
+                            }
+                            await handleCheckboxChange(doc.id, 'accChecked', accCheckbox);
                         }
                     });
 
-                    coveredCheckbox.addEventListener('change', function () {
-                        handleCheckboxChange(doc.id, 'coveredChecked', coveredCheckbox);
-                        if (coveredCheckbox.checked) {
-                            row.classList.add('highlight-covered');
-                        } else {
-                            row.classList.remove('highlight-covered');
+                    coveredCheckbox.addEventListener('change', async function () {
+                        if (!coveredCheckbox.checked) {
+                            const confirmUncheck = confirm("Are you sure you want to uncheck 'Covered'? This will move the order back to the regular orders table.");
+                            if (!confirmUncheck) {
+                                coveredCheckbox.checked = true; // Revert to checked state
+                                return;
+                            }
+                            await handleCheckboxChange(doc.id, 'coveredChecked', coveredCheckbox);
                         }
                     });
-
-                    // Apply highlight for checked checkboxes on initial page load
-                    if (accCheckbox.checked) {
-                        row.classList.add('highlight-acc');
-                    }
-                    if (coveredCheckbox.checked) {
-                        row.classList.add('highlight-covered');
-                    }
                 });
-
             } catch (error) {
                 console.error("Error fetching Acc and Covered orders: ", error);
                 alert("There was an error fetching the orders.");
             }
         }
 
+        // Handle checkbox changes
         async function handleCheckboxChange(docId, field, checkbox) {
-            const orderRef = doc(db, "orders", docId);
-            await updateDoc(orderRef, {
-                [field]: checkbox.checked
-            });
+            try {
+                const orderRef = doc(db, "orders", docId);
+                await updateDoc(orderRef, {
+                    [field]: checkbox.checked
+                });
+                alert(`Order updated successfully.`);
+                fetchAccCoveredOrders(); // Refresh table after updating
+            } catch (error) {
+                console.error("Error updating order: ", error);
+                alert("There was an error updating the order.");
+            }
         }
 
-        // Call the function when the page loads
+        // Delete old orders
+        async function deleteOldOrders(days) {
+            try {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - days);
+                const cutoffTimestamp = Timestamp.fromDate(cutoffDate);
+
+                const ordersQuery = query(
+                    collection(db, "orders"),
+                    where("accChecked", "==", true),
+                    where("coveredChecked", "==", true),
+                    where("timestamp", "<", cutoffTimestamp)
+                );
+
+                const querySnapshot = await getDocs(ordersQuery);
+
+                if (querySnapshot.empty) {
+                    alert(`No orders found older than ${days} days with both Acc and Covered checked.`);
+                    return;
+                }
+
+                const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+                await Promise.all(deletePromises);
+
+                alert(`${querySnapshot.size} orders older than ${days} days were deleted successfully.`);
+                fetchAccCoveredOrders();
+            } catch (error) {
+                console.error("Error deleting old orders: ", error);
+                alert("There was an error deleting the orders.");
+            }
+        }
+
+        // Delete button click
+        deleteButton.addEventListener('click', () => {
+            const selectedDays = parseInt(daySelector.value);
+            if (confirm(`Are you sure you want to delete orders older than ${selectedDays} days?`)) {
+                deleteOldOrders(selectedDays);
+            }
+        });
+
+        // Initial fetch
         fetchAccCoveredOrders();
     </script>
 

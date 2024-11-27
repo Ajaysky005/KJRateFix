@@ -19,39 +19,36 @@
         .dynamic-fields {
             margin-top: 20px;
         }
-
-        .calculate-btn {
-            margin-top: 10px;
-        }
     </style>
 </head>
 
 <body>
-      <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-      <a class="navbar-brand" href="#">KJRateFix</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="index.html">Home</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="entry.html">Entry</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="viewdata.html">View Data</a>
-          </li>
-          <li class="nav-item">
-              <a class="nav-link" href="accandcovered.html">Covered</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">KJRateFix</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="entry.html">Entry</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="viewdata.html">View Data</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="accandcovered.html">Covered</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
     <div class="container">
         <h2 class="text-center">Enter Order</h2>
@@ -80,13 +77,13 @@
 
         // Your Firebase configuration
         const firebaseConfig = {
-          apiKey: "AIzaSyAFr9vK3MbujpR9KFe_UsKHHCtedsYj26A",
-          authDomain: "kjratefixweb.firebaseapp.com",
-          databaseURL: "https://kjratefixweb-default-rtdb.firebaseio.com",
-          projectId: "kjratefixweb",
-          storageBucket: "kjratefixweb.firebasestorage.app",
-          messagingSenderId: "854761320925",
-          appId: "1:854761320925:web:1a48cc618d83f7e4b34634"
+            apiKey: "AIzaSyAFr9vK3MbujpR9KFe_UsKHHCtedsYj26A",
+            authDomain: "kjratefixweb.firebaseapp.com",
+            databaseURL: "https://kjratefixweb-default-rtdb.firebaseio.com",
+            projectId: "kjratefixweb",
+            storageBucket: "kjratefixweb.firebasestorage.app",
+            messagingSenderId: "854761320925",
+            appId: "1:854761320925:web:1a48cc618d83f7e4b34634"
         };
 
         // Initialize Firebase
@@ -99,7 +96,7 @@
         const btnAmount = document.getElementById('btnAmount');
         const btnSave = document.getElementById('btnSave');
 
-        let etWeight, etRate, etAmount, calculateBtn;
+        let etWeight, etRate, etAmount;
 
         // Button event listeners
         btnWeight.addEventListener('click', showWeightFields);
@@ -117,8 +114,7 @@
             dynamicFields.appendChild(etRate);
             dynamicFields.appendChild(etAmount);
 
-            calculateBtn = createButton('Calculate', calculateValues);
-            dynamicFields.appendChild(calculateBtn);
+            addRealtimeCalculation('weight', 'rate', 'amount');
         }
 
         // Rate and Amount input fields
@@ -133,50 +129,46 @@
             dynamicFields.appendChild(etAmount);
             dynamicFields.appendChild(etWeight);
 
-            calculateBtn = createButton('Calculate', calculateValues);
-            dynamicFields.appendChild(calculateBtn);
+            addRealtimeCalculation('amount', 'rate', 'weight');
         }
 
         function createInputField(label, disabled = false) {
             const div = document.createElement('div');
             div.className = 'mb-3';
             const input = document.createElement('input');
-            input.type = 'text';
+            input.type = 'number';
             input.className = 'form-control';
             input.placeholder = label;
             input.disabled = disabled;
+            input.dataset.label = label.toLowerCase();
             div.appendChild(input);
             return div;
         }
 
-        function createButton(label, onClick) {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'btn btn-info calculate-btn';
-            button.textContent = label;
-            button.addEventListener('click', onClick);
-            return button;
-        }
+        function addRealtimeCalculation(field1, field2, resultField) {
+            const input1 = dynamicFields.querySelector(`[data-label="${field1}"]`);
+            const input2 = dynamicFields.querySelector(`[data-label="${field2}"]`);
+            const resultInput = dynamicFields.querySelector(`[data-label="${resultField}"]`);
 
-        function calculateValues() {
-            const rate = parseFloat(etRate.querySelector('input').value) || 0;
-            const weight = parseFloat(etWeight.querySelector('input').value) || 0;
-            const amount = parseFloat(etAmount.querySelector('input').value) || 0;
+            const calculate = () => {
+                const value1 = parseFloat(input1.value) || 0;
+                const value2 = parseFloat(input2.value) || 0;
+                if (field1 === 'weight' || field1 === 'amount') {
+                    resultInput.value = (value1 * value2).toFixed(2);
+                } else {
+                    resultInput.value = (value1 / value2).toFixed(2);
+                }
+            };
 
-            if (etAmount.querySelector('input').disabled && weight && rate) {
-                etAmount.querySelector('input').value = (weight * rate).toFixed(2);
-                etAmount.querySelector('input').disabled = true;
-            } else if (etWeight.querySelector('input').disabled && amount && rate) {
-                etWeight.querySelector('input').value = (amount / rate).toFixed(2);
-                etWeight.querySelector('input').disabled = true;
-            }
+            input1.addEventListener('input', calculate);
+            input2.addEventListener('input', calculate);
         }
 
         btnSave.addEventListener('click', function () {
             const name = document.getElementById('name').value;
-            const weight = etWeight.querySelector('input').value;
-            const rate = etRate.querySelector('input').value;
-            const amount = etAmount.querySelector('input').value;
+            const weight = dynamicFields.querySelector('[data-label="weight"]').value || '';
+            const rate = dynamicFields.querySelector('[data-label="rate"]').value || '';
+            const amount = dynamicFields.querySelector('[data-label="amount"]').value || '';
 
             if (!name || !weight || !rate || !amount) {
                 alert("Please fill all fields before saving.");
@@ -190,12 +182,16 @@
                 amount: parseFloat(amount),
                 timestamp: serverTimestamp()
             })
-            .then(() => {
-                alert('Data saved successfully!');
-            })
-            .catch((error) => {
-                console.error("Error adding document: ", error);
-            });
+                .then(() => {
+                    alert('Data saved successfully!');
+
+                    // Clear all input fields
+                    document.getElementById('name').value = '';
+                    dynamicFields.innerHTML = ''; // Clear dynamic fields
+                })
+                .catch((error) => {
+                    console.error("Error adding document: ", error);
+                });
         });
     </script>
 </body>

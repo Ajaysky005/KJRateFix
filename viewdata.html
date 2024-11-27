@@ -145,24 +145,13 @@
                 const endTimestamp = Timestamp.fromDate(new Date(endDate));
 
                 // Adjust the end date to include the entire last day (23:59:59)
-                const adjustedEndTimestamp = new Timestamp(endTimestamp.seconds + 86399, endTimestamp.nanoseconds); // Add 23 hours, 59 minutes, and 59 seconds
+                const adjustedEndTimestamp = new Timestamp(endTimestamp.seconds + 86399, endTimestamp.nanoseconds);
 
-                // If the start and end date are the same, fetch data for that exact date
-                let ordersQuery;
-                if (startDate === endDate) {
-                    ordersQuery = query(
-                        collection(db, "orders"),
-                        where("timestamp", ">=", startTimestamp),
-                        where("timestamp", "<", new Date(new Date(startDate).setDate(new Date(startDate).getDate() + 1))) // Next day's start
-                    );
-                } else {
-                    // For date range, use the provided start and end dates, including the full end date
-                    ordersQuery = query(
-                        collection(db, "orders"),
-                        where("timestamp", ">=", startTimestamp),
-                        where("timestamp", "<=", adjustedEndTimestamp)
-                    );
-                }
+                const ordersQuery = query(
+                    collection(db, "orders"),
+                    where("timestamp", ">=", startTimestamp),
+                    where("timestamp", "<=", adjustedEndTimestamp)
+                );
 
                 const querySnapshot = await getDocs(ordersQuery);
 
@@ -176,9 +165,8 @@
                 querySnapshot.forEach(doc => {
                     const orderData = doc.data();
 
-                    // Skip this order if both Acc and Covered are checked
                     if (orderData.accChecked && orderData.coveredChecked) {
-                        return; // Skip this row and continue with the next order
+                        return;
                     }
 
                     const row = document.createElement('tr');
@@ -203,7 +191,6 @@
                     const accCheckbox = row.querySelector('.acc-checkbox');
                     const coveredCheckbox = row.querySelector('.covered-checkbox');
 
-                    // Apply highlights based on the initial state
                     if (accCheckbox.checked) {
                         row.classList.add('highlight-acc');
                     }
@@ -211,21 +198,30 @@
                         row.classList.add('highlight-covered');
                     }
 
-                    // Handle checkbox state change for highlighting
                     accCheckbox.addEventListener('change', function () {
-                        if (accCheckbox.checked) {
-                            row.classList.add('highlight-acc');
-                        } else {
+                        if (!accCheckbox.checked) {
+                            const confirmUncheck = confirm("Are you sure you want to uncheck 'Acc'?");
+                            if (!confirmUncheck) {
+                                accCheckbox.checked = true;
+                                return;
+                            }
                             row.classList.remove('highlight-acc');
+                        } else {
+                            row.classList.add('highlight-acc');
                         }
                         handleCheckboxChange(doc.id, 'accChecked', accCheckbox);
                     });
 
                     coveredCheckbox.addEventListener('change', function () {
-                        if (coveredCheckbox.checked) {
-                            row.classList.add('highlight-covered');
-                        } else {
+                        if (!coveredCheckbox.checked) {
+                            const confirmUncheck = confirm("Are you sure you want to uncheck 'Covered'?");
+                            if (!confirmUncheck) {
+                                coveredCheckbox.checked = true;
+                                return;
+                            }
                             row.classList.remove('highlight-covered');
+                        } else {
+                            row.classList.add('highlight-covered');
                         }
                         handleCheckboxChange(doc.id, 'coveredChecked', coveredCheckbox);
                     });

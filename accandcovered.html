@@ -19,6 +19,23 @@
         .checkbox-column {
             text-align: center;
         }
+
+        /* Ensure the table is scrollable horizontally on smaller screens */
+        @media (max-width: 767px) {
+            .table-responsive {
+                overflow-x: auto;
+            }
+
+            #deleteButton {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            #daySelector {
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
     </style>
 </head>
 
@@ -51,7 +68,7 @@
     </nav>
 
     <div class="container">
-        <h2 class="text-center">Orders with Acc and Covered Checked</h2>
+        <h2 class="text-center mt-4">Orders with Acc and Covered Checked</h2>
         <div class="d-flex justify-content-end my-3">
             <select id="daySelector" class="form-select w-auto">
                 <option value="7">7 Days</option>
@@ -60,7 +77,9 @@
             </select>
             <button id="deleteButton" class="btn btn-danger ms-2">Delete</button>
         </div>
-        <div id="accCoveredTable" class="report-table">
+
+        <!-- Table inside a responsive wrapper to handle small screens -->
+        <div id="accCoveredTable" class="table-responsive">
             <table class="table table-striped">
                 <thead>
                     <tr>
@@ -123,7 +142,7 @@
                     const orderData = doc.data();
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${orderData.timestamp.toDate().toLocaleDateString()}</td>
+                        <td>${orderData.timestamp.toDate().toLocaleDateString('en-GB')}</td>
                         <td>${orderData.name}</td>
                         <td>${orderData.weight}</td>
                         <td>${orderData.rate}</td>
@@ -216,15 +235,13 @@
             }
         }
 
-        // Delete button click
-        deleteButton.addEventListener('click', () => {
-            const selectedDays = parseInt(daySelector.value);
-            if (confirm(`Are you sure you want to delete orders older than ${selectedDays} days?`)) {
-                deleteOldOrders(selectedDays);
-            }
+        // Event listener for delete button
+        deleteButton.addEventListener('click', function () {
+            const days = parseInt(daySelector.value);
+            deleteOldOrders(days);
         });
 
-        // Initial fetch
+        // Initial fetch of orders
         fetchAccCoveredOrders();
     </script>
 

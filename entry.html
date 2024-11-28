@@ -87,7 +87,10 @@
             <!-- Dynamic fields for Weight/Rate or Rate/Amount will appear here -->
             <div id="dynamicFields" class="dynamic-fields"></div>
 
-            <button type="button" class="btn btn-success" id="btnSave">Save</button>
+            <div class="button-group">
+                <button type="button" class="btn btn-success" id="btnSaveSales">Save Sales</button>
+                <button type="button" class="btn btn-danger" id="btnSavePurchase">Save Purchase</button>
+            </div>
         </form>
     </div>
 
@@ -115,7 +118,8 @@
         const dynamicFields = document.getElementById('dynamicFields');
         const btnWeight = document.getElementById('btnWeight');
         const btnAmount = document.getElementById('btnAmount');
-        const btnSave = document.getElementById('btnSave');
+        const btnSaveSales = document.getElementById('btnSaveSales');
+        const btnSavePurchase = document.getElementById('btnSavePurchase');
 
         let etWeight, etRate, etAmount;
 
@@ -123,7 +127,6 @@
         btnWeight.addEventListener('click', showWeightFields);
         btnAmount.addEventListener('click', showAmountFields);
 
-        // Weight and Rate input fields
         function showWeightFields() {
             dynamicFields.innerHTML = '';
 
@@ -138,7 +141,6 @@
             addRealtimeCalculation('weight', 'rate', 'amount', true);
         }
 
-        // Rate and Amount input fields
         function showAmountFields() {
             dynamicFields.innerHTML = '';
 
@@ -174,13 +176,14 @@
             const calculate = () => {
                 const value1 = parseFloat(input1.value) || 0;
                 const value2 = parseFloat(input2.value) || 0;
+
                 if (isWeightButton) {
-                    resultInput.value = (value1 * value2).toFixed(2);  // Weight * Rate = Amount
+                    resultInput.value = (value1 * value2).toFixed(2);
                 } else {
                     if (value2 !== 0) {
-                        resultInput.value = (value1 / value2).toFixed(2);  // Amount / Rate = Weight
+                        resultInput.value = (value1 / value2).toFixed(2);
                     } else {
-                        resultInput.value = 'Error';  // Handle division by zero
+                        resultInput.value = 'Error'; // Handle division by zero
                     }
                 }
             };
@@ -189,26 +192,33 @@
             input2.addEventListener('input', calculate);
         }
 
-        btnSave.addEventListener('click', function () {
+        function saveData(transactionType) {
             const name = document.getElementById('name').value;
-            const weight = dynamicFields.querySelector('[data-label="weight"]').value || '';
-            const rate = dynamicFields.querySelector('[data-label="rate"]').value || '';
-            const amount = dynamicFields.querySelector('[data-label="amount"]').value || '';
+            let weight = parseFloat(dynamicFields.querySelector('[data-label="weight"]').value) || 0;
+            const rate = parseFloat(dynamicFields.querySelector('[data-label="rate"]').value) || 0;
+            let amount = parseFloat(dynamicFields.querySelector('[data-label="amount"]').value) || 0;
 
-            if (!name || !weight || !rate || !amount) {
+            // Adjust weight and amount to negative if transaction type is "purchase"
+            if (transactionType === 'purchase') {
+                weight = -Math.abs(weight); // Ensure it is negative
+                amount = -Math.abs(amount); // Ensure it is negative
+            }
+
+            if (!name || (!weight && weight !== 0) || !rate || (!amount && amount !== 0)) {
                 alert("Please fill all fields before saving.");
                 return;
             }
 
             addDoc(collection(db, "orders"), {
                 name: name,
-                weight: parseFloat(weight),
-                rate: parseFloat(rate),
-                amount: parseFloat(amount),
+                weight: weight,
+                rate: rate,
+                amount: amount,
+                transactionType: transactionType,
                 timestamp: serverTimestamp()
             })
                 .then(() => {
-                    alert('Data saved successfully!');
+                    alert(`${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} data saved successfully!`);
 
                     // Clear all input fields
                     document.getElementById('name').value = '';
@@ -217,7 +227,10 @@
                 .catch((error) => {
                     console.error("Error adding document: ", error);
                 });
-        });
+        }
+
+        btnSaveSales.addEventListener('click', () => saveData('sales'));
+        btnSavePurchase.addEventListener('click', () => saveData('purchase'));
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

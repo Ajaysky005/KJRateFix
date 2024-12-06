@@ -51,7 +51,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html">Home</a>
+                        <a class="nav-link" href="home.html">Home</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="entry.html">Entry</a>
@@ -61,6 +61,15 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="accandcovered.html">Covered</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            <span id="usernameDisplay">User</span>
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="#" id="logoutButton">Logout</a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -102,6 +111,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
         import { getFirestore, collection, query, where, getDocs, doc, updateDoc, deleteDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyAFr9vK3MbujpR9KFe_UsKHHCtedsYj26A",
@@ -115,10 +125,31 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
         const accCoveredReportBody = document.getElementById('accCoveredReportBody');
         const daySelector = document.getElementById('daySelector');
         const deleteButton = document.getElementById('deleteButton');
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        const logoutButton = document.getElementById('logoutButton');
+
+        // Authentication check
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                usernameDisplay.textContent = user.displayName || user.email.split('@')[0]; // Show username or email part
+            } else {
+                window.location.href = 'index.html'; // Redirect to login page if not authenticated
+            }
+        });
+
+        // Logout functionality
+        logoutButton.addEventListener('click', () => {
+            signOut(auth).then(() => {
+                window.location.href = 'index.html'; // Redirect to login page after logout
+            }).catch((error) => {
+                console.error('Logout error:', error);
+            });
+        });
 
         // Fetch orders with both Acc and Covered checked
         async function fetchAccCoveredOrders() {

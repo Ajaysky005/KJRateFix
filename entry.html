@@ -24,11 +24,11 @@
             margin-bottom: 20px;
         }
 
-        .form-control, .btn {
+        .form-control,
+        .btn {
             width: 100%;
         }
 
-        /* Make buttons stack vertically on smaller screens */
         .button-group {
             display: flex;
             flex-direction: column;
@@ -55,7 +55,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html">Home</a>
+                        <a class="nav-link" href="home.html">Home</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="entry.html">Entry</a>
@@ -65,6 +65,15 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="accandcovered.html">Covered</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            <span id="usernameDisplay">User</span>
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="#" id="logoutButton">Logout</a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -98,6 +107,7 @@
         // Import Firebase using CDN
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
         import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
 
         // Your Firebase configuration
         const firebaseConfig = {
@@ -113,6 +123,7 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
         // Elements
         const dynamicFields = document.getElementById('dynamicFields');
@@ -120,8 +131,30 @@
         const btnAmount = document.getElementById('btnAmount');
         const btnSaveSales = document.getElementById('btnSaveSales');
         const btnSavePurchase = document.getElementById('btnSavePurchase');
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        const logoutButton = document.getElementById('logoutButton');
 
         let etWeight, etRate, etAmount;
+
+        // Check if the user is authenticated
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Display username in navbar
+                usernameDisplay.textContent = user.displayName || user.email.split('@')[0]; // Display username or email part
+            } else {
+                // Redirect to login page if not authenticated
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Logout functionality
+        logoutButton.addEventListener('click', () => {
+            signOut(auth).then(() => {
+                window.location.href = 'index.html'; // Redirect to login page after logout
+            }).catch((error) => {
+                console.error('Logout error:', error);
+            });
+        });
 
         // Button event listeners
         btnWeight.addEventListener('click', showWeightFields);
@@ -198,6 +231,14 @@
             const rate = parseFloat(dynamicFields.querySelector('[data-label="rate"]').value) || 0;
             let amount = parseFloat(dynamicFields.querySelector('[data-label="amount"]').value) || 0;
 
+            // Get the logged-in user's username
+            const user = auth.currentUser;
+            if (!user) {
+                alert("You must be logged in to add an order.");
+                return;
+            }
+            const username = user.displayName || user.email.split('@')[0]; // Fallback to email's username part
+
             // Adjust weight and amount to negative if transaction type is "purchase"
             if (transactionType === 'purchase') {
                 weight = -Math.abs(weight); // Ensure it is negative
@@ -215,6 +256,7 @@
                 rate: rate,
                 amount: amount,
                 transactionType: transactionType,
+                username: username,  // Store the logged-in user's username
                 timestamp: serverTimestamp()
             })
                 .then(() => {

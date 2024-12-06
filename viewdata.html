@@ -28,20 +28,17 @@
             background-color: #f1d06e;
         }
 
-        .average-row {
-            font-weight: bold;
-            background-color: #f0f0f0;
-        }
-
-        #averagesDisplay {
+        #averagesDisplay, #totalAverages {
             margin-top: 20px;
-            gap: 20px;
         }
 
-        @media (max-width: 768px) {
-            .report-table {
-                overflow-x: auto;
-            }
+        .averages-column {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .averages-column div {
+            width: 45%;
         }
     </style>
 </head>
@@ -89,12 +86,23 @@
             </div>
             <button type="button" class="btn btn-primary" id="btnGenerateReport">Generate Report</button>
 
-            <!-- Averages Display -->
-            <div id="averagesDisplay" class="mt-3" style="display: none;">
-                <p><strong>Average Sales Weight:</strong> <span id="avgWeight">N/A</span></p>
-                <p><strong>Average Sales Rate:</strong> <span id="avgRate">N/A</span></p>
-                <p><strong>Average Purchase Weight:</strong> <span id="avgPurchaseWeight">N/A</span></p>
-                <p><strong>Average Purchase Rate:</strong> <span id="avgPurchaseRate">N/A</span></p>
+            <!-- Display Total Averages -->
+            <div id="totalAverages" class="mt-3" style="display: none;">
+                <div class="averages-column">
+                    <!-- Positive averages column -->
+                    <div>
+                        <h6>Positive Averages:</h6>
+                        <p><strong>Total Average Weight:</strong> <span id="totalAvgWeightPositive">N/A</span></p>
+                        <p><strong>Total Average Amount:</strong> <span id="totalAvgAmountPositive">N/A</span></p>
+                    </div>
+
+                    <!-- Negative averages column -->
+                    <div>
+                        <h6>Negative Averages:</h6>
+                        <p><strong>Total Average Weight:</strong> <span id="totalAvgWeightNegative">N/A</span></p>
+                        <p><strong>Total Average Amount:</strong> <span id="totalAvgAmountNegative">N/A</span></p>
+                    </div>
+                </div>
             </div>
         </form>
 
@@ -114,7 +122,7 @@
                         </tr>
                     </thead>
                     <tbody id="reportBody">
-                        <!-- Averages and Data rows will be added dynamically -->
+                        <!-- Data rows will be added dynamically -->
                     </tbody>
                 </table>
             </div>
@@ -161,12 +169,52 @@
             fetchData(startDate, endDate);
         });
 
+        function displayTotalAverages(filteredOrders) {
+            let totalWeightPositive = 0;
+            let totalAmountPositive = 0;
+            let totalWeightNegative = 0;
+            let totalAmountNegative = 0;
+
+            let countPositive = 0;
+            let countNegative = 0;
+
+            filteredOrders.forEach(order => {
+                if (!(order.accChecked && order.coveredChecked)) {
+                    // Check if the order's Weight and Amount are positive or negative
+                    if (order.weight > 0 && order.amount > 0) {
+                        totalWeightPositive += order.weight;
+                        totalAmountPositive += order.amount;
+                        countPositive++;
+                    } else if (order.weight < 0 && order.amount < 0) {
+                        totalWeightNegative += order.weight;
+                        totalAmountNegative += order.amount;
+                        countNegative++;
+                    }
+                }
+            });
+
+            // Calculate positive averages
+            const avgWeightPositive = countPositive > 0 ? (totalWeightPositive / countPositive).toFixed(2) : "N/A";
+            const avgAmountPositive = countPositive > 0 ? (totalAmountPositive / countPositive).toFixed(2) : "N/A";
+
+            // Calculate negative averages
+            const avgWeightNegative = countNegative > 0 ? (totalWeightNegative / countNegative).toFixed(2) : "N/A";
+            const avgAmountNegative = countNegative > 0 ? (totalAmountNegative / countNegative).toFixed(2) : "N/A";
+
+            // Display averages
+            document.getElementById('totalAvgWeightPositive').textContent = avgWeightPositive;
+            document.getElementById('totalAvgAmountPositive').textContent = avgAmountPositive;
+
+            document.getElementById('totalAvgWeightNegative').textContent = avgWeightNegative;
+            document.getElementById('totalAvgAmountNegative').textContent = avgAmountNegative;
+
+            document.getElementById('totalAverages').style.display = 'block';
+        }
+
         async function fetchData(startDate, endDate) {
             try {
                 const startTimestamp = Timestamp.fromDate(new Date(startDate));
                 const endTimestamp = Timestamp.fromDate(new Date(endDate));
-
-                // Adjust the end date to include the entire last day (23:59:59)
                 const adjustedEndTimestamp = new Timestamp(endTimestamp.seconds + 86399, endTimestamp.nanoseconds);
 
                 const ordersQuery = query(
@@ -183,102 +231,67 @@
                 }
 
                 reportBody.innerHTML = '';
-                let totalSalesWeight = 0;
-                let totalSalesAmount = 0;
-                let salesCount = 0;
-
-                let totalPurchaseWeight = 0;
-                let totalPurchaseAmount = 0;
-                let purchaseCount = 0;
+                const filteredOrders = [];
 
                 querySnapshot.forEach(doc => {
                     const orderData = doc.data();
 
-                    // Skip orders where both 'Acc' and 'Covered' are checked
-                    if (orderData.accChecked && orderData.coveredChecked) {
-                        return;
-                    }
+                    // Only include orders that do not have both "Acc" and "Covered" checked
+                    if (!(orderData.accChecked && orderData.coveredChecked)) {
+                        filteredOrders.push(orderData);
 
-                    const row = document.createElement('tr');
-                    const accChecked = orderData.accChecked ? 'checked' : '';
-                    const coveredChecked = orderData.coveredChecked ? 'checked' : '';
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${orderData.timestamp.toDate().toLocaleDateString('en-GB')}</td>
+                            <td>${orderData.name}</td>
+                            <td>${orderData.weight}</td>
+                            <td>${orderData.rate}</td>
+                            <td>${orderData.amount}</td>
+                            <td class="checkbox-column">
+                                <input type="checkbox" class="acc-checkbox" ${orderData.accChecked ? 'checked' : ''} />
+                            </td>
+                            <td class="checkbox-column">
+                                <input type="checkbox" class="covered-checkbox" ${orderData.coveredChecked ? 'checked' : ''} />
+                            </td>
+                        `;
+                        reportBody.appendChild(row);
 
-                    row.innerHTML = ` 
-                        <td>${orderData.timestamp.toDate().toLocaleDateString('en-GB')}</td>
-                        <td>${orderData.name}</td>
-                        <td>${orderData.weight}</td>
-                        <td>${orderData.rate}</td>
-                        <td>${orderData.amount}</td>
-                        <td class="checkbox-column">
-                            <input type="checkbox" class="acc-checkbox" id="acc-${doc.id}" ${accChecked} />
-                        </td>
-                        <td class="checkbox-column">
-                            <input type="checkbox" class="covered-checkbox" id="covered-${doc.id}" ${coveredChecked} />
-                        </td>
-                    `;
-                    reportBody.appendChild(row);
+                        // Highlight rows based on checkbox state
+                        const accCheckbox = row.querySelector('.acc-checkbox');
+                        const coveredCheckbox = row.querySelector('.covered-checkbox');
 
-                    const accCheckbox = row.querySelector('.acc-checkbox');
-                    const coveredCheckbox = row.querySelector('.covered-checkbox');
+                        if (orderData.accChecked) row.classList.add('highlight-acc');
+                        if (orderData.coveredChecked) row.classList.add('highlight-covered');
 
-                    if (accCheckbox.checked) {
-                        row.classList.add('highlight-acc');
-                    }
-                    if (coveredCheckbox.checked) {
-                        row.classList.add('highlight-covered');
-                    }
-
-                    accCheckbox.addEventListener('change', function () {
-                        if (!accCheckbox.checked) {
-                            const confirmUncheck = confirm("Are you sure you want to uncheck 'Acc'?");
-                            if (!confirmUncheck) {
-                                accCheckbox.checked = true;
-                                return;
+                        accCheckbox.addEventListener('change', function () {
+                            if (!accCheckbox.checked) {
+                                const confirmUncheck = confirm("Are you sure you want to uncheck 'Acc'? This will move the order back to the regular orders table.");
+                                if (!confirmUncheck) {
+                                    accCheckbox.checked = true; // Revert to checked state
+                                    return;
+                                }
                             }
-                            row.classList.remove('highlight-acc');
-                        } else {
-                            row.classList.add('highlight-acc');
-                        }
-                        updateCheckedStatus(doc.id, 'accChecked', accCheckbox.checked);
-                    });
+                            if (accCheckbox.checked) row.classList.add('highlight-acc');
+                            else row.classList.remove('highlight-acc');
+                            updateCheckedStatus(doc.id, 'accChecked', accCheckbox.checked);
+                        });
 
-                    coveredCheckbox.addEventListener('change', function () {
-                        if (!coveredCheckbox.checked) {
-                            const confirmUncheck = confirm("Are you sure you want to uncheck 'Covered'?");
-                            if (!confirmUncheck) {
-                                coveredCheckbox.checked = true;
-                                return;
+                        coveredCheckbox.addEventListener('change', function () {
+                            if (!coveredCheckbox.checked) {
+                                const confirmUncheck = confirm("Are you sure you want to uncheck 'Covered'? This will move the order back to the regular orders table.");
+                                if (!confirmUncheck) {
+                                    coveredCheckbox.checked = true; // Revert to checked state
+                                    return;
+                                }
                             }
-                            row.classList.remove('highlight-covered');
-                        } else {
-                            row.classList.add('highlight-covered');
-                        }
-                        updateCheckedStatus(doc.id, 'coveredChecked', coveredCheckbox.checked);
-                    });
-
-                    // Update totals for sales (positive) and purchases (negative)
-                    if (orderData.amount > 0) {
-                        totalSalesWeight += orderData.weight || 0;
-                        totalSalesAmount += orderData.amount || 0;
-                        salesCount++;
-                    } else if (orderData.amount < 0) {
-                        totalPurchaseWeight += orderData.weight || 0;
-                        totalPurchaseAmount += orderData.amount || 0;
-                        purchaseCount++;
+                            if (coveredCheckbox.checked) row.classList.add('highlight-covered');
+                            else row.classList.remove('highlight-covered');
+                            updateCheckedStatus(doc.id, 'coveredChecked', coveredCheckbox.checked);
+                        });
                     }
                 });
 
-                // Calculate averages
-                const avgSalesRate = (totalSalesWeight > 0) ? (totalSalesAmount / totalSalesWeight).toFixed(2) : 0;
-                const avgPurchaseRate = (totalPurchaseWeight > 0) ? (Math.abs(totalPurchaseAmount) / totalPurchaseWeight).toFixed(2) : 0;
-
-                // Display the averages
-                document.getElementById('avgWeight').innerText = (totalSalesWeight / salesCount).toFixed(2) || 'N/A';
-                document.getElementById('avgRate').innerText = avgSalesRate || 'N/A';
-                document.getElementById('avgPurchaseWeight').innerText = (totalPurchaseWeight / purchaseCount).toFixed(2) || 'N/A';
-                document.getElementById('avgPurchaseRate').innerText = avgPurchaseRate || 'N/A';
-
-                document.getElementById('averagesDisplay').style.display = 'none';
+                displayTotalAverages(filteredOrders);
                 reportTable.style.display = 'block';
             } catch (error) {
                 console.error("Error fetching data: ", error);
@@ -289,6 +302,10 @@
             const docRef = doc(db, "orders", docId);
             updateDoc(docRef, {
                 [field]: value
+            }).then(() => {
+                console.log(`Updated ${field} for document ${docId}`);
+            }).catch((error) => {
+                console.error(`Error updating ${field}:`, error);
             });
         }
     </script>
